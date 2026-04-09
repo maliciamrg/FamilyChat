@@ -10,6 +10,12 @@ service cloud.firestore {
      ).data.role == "admin";
    }
 
+   function isMember() {
+     return exists(
+       /databases/$(database)/documents/members/$(request.auth.uid)
+     );
+   }
+
    match /members/{userId} {
 
      allow read: if request.auth != null;
@@ -20,7 +26,9 @@ service cloud.firestore {
 
   match /device_tokens/{userId} {
 
-     allow read, write: if request.auth != null;
+     allow read: if request.auth != null;
+
+     allow write: if request.auth.uid == userId;
 
    }
 
@@ -28,7 +36,10 @@ service cloud.firestore {
 
      allow read: if request.auth != null;
 
-     allow write: if request.auth != null;
+     allow create: if request.auth.uid == userId
+                   && !('role' in request.resource.data);
+
+     allow delete: if isAdmin();
 
    }
    match /invites/{code} {
@@ -41,15 +52,17 @@ service cloud.firestore {
 
    match /family_chat/{doc} {
 
-     allow read, write: if request.auth != null;
+     allow read: if isMember()
+                 && resource.data.familyId == get(
+                   /databases/$(database)/documents/members/$(request.auth.uid)
+                 ).data.familyId;
 
-   }
+     allow create: if isMember()
+                   && request.resource.data.familyId == get(
+                     /databases/$(database)/documents/members/$(request.auth.uid)
+                   ).data.familyId;
 
-   match /device_tokens/{userId} {
-
-     allow read: if request.auth != null;
-
-     allow write: if request.auth.uid == userId;
+     allow delete: if isAdmin();
 
    }
 

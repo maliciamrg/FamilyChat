@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#075E54</color>
+    <color name="colorPrimaryDark">#054C44</color>
+    <color name="colorAccent">#25D366</color>
+    <color name="colorSend">#075E54</color>
+    <color name="bubbleMe">#DCF8C6</color>
+    <color name="bubbleOther">#FFFFFF</color>
+    <color name="chatBackground">#ECE5DD</color>
+    <color name="pendingOrange">#FF9800</color>
+    <color name="adminBlue">#2196F3</color>
+</resources>
+

@@ -1,12 +1,11 @@
 package com.malicia.familychat;
 
-import java.util.HashMap;
-import java.util.Map;
-
 public class Message {
 
     public String text;
     public String sender;
+    public String senderUid;
+    public String senderName;
     public long timestamp;
     public String familyId;
 

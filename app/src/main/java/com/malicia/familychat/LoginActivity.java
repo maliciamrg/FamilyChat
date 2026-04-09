@@ -4,7 +4,6 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.View;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
@@ -18,7 +17,6 @@ import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.*;
 import com.google.firebase.firestore.FirebaseFirestore;
 
-@SuppressWarnings("deprecation")
 public class LoginActivity extends AppCompatActivity {
 
     GoogleSignInClient googleClient;
@@ -26,11 +24,9 @@ public class LoginActivity extends AppCompatActivity {
     FirebaseFirestore db;
     ActivityResultLauncher<Intent> signInLauncher;
     EditText inviteCodeInput;
-    Button joinButton;
     SharedPreferences prefs;
 
-    protected void onCreate(Bundle savedInstanceState){
-
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
@@ -39,7 +35,6 @@ public class LoginActivity extends AppCompatActivity {
         prefs = getSharedPreferences("FamilyChatPrefs", MODE_PRIVATE);
 
         inviteCodeInput = findViewById(R.id.inviteCodeInput);
-        joinButton = findViewById(R.id.joinButton);
 
         // Check if user is already logged in
         if (auth.getCurrentUser() != null) {
@@ -48,8 +43,7 @@ public class LoginActivity extends AppCompatActivity {
             setupGoogleSignIn();
         }
 
-        joinButton.setOnClickListener(v -> joinFamily());
-
+        findViewById(R.id.joinButton).setOnClickListener(v -> joinFamily());
     }
 
     private void setupGoogleSignIn() {
@@ -68,44 +62,34 @@ public class LoginActivity extends AppCompatActivity {
                         Intent data = result.getData();
                         Task<GoogleSignInAccount> task =
                                 GoogleSignIn.getSignedInAccountFromIntent(data);
-
                         try {
-
                             GoogleSignInAccount account =
                                     task.getResult(ApiException.class);
-
                             firebaseAuth(account.getIdToken());
-
                         } catch (Exception e) {
-                            e.printStackTrace();
+                            Toast.makeText(this, "Sign-in failed. Please try again.", Toast.LENGTH_SHORT).show();
                         }
                     }
                 });
 
         findViewById(R.id.googleLoginButton).setOnClickListener(v -> {
-
             Intent signInIntent = googleClient.getSignInIntent();
             signInLauncher.launch(signInIntent);
-
         });
     }
 
-    void firebaseAuth(String idToken){
-
+    void firebaseAuth(String idToken) {
         AuthCredential credential =
-                GoogleAuthProvider.getCredential(idToken,null);
+                GoogleAuthProvider.getCredential(idToken, null);
 
         auth.signInWithCredential(credential)
                 .addOnCompleteListener(this, task -> {
-
-                    if(task.isSuccessful()){
-
+                    if (task.isSuccessful()) {
                         checkUserFamily();
-
+                    } else {
+                        Toast.makeText(this, "Authentication failed.", Toast.LENGTH_SHORT).show();
                     }
-
                 });
-
     }
 
     private void checkUserFamily() {
@@ -114,21 +98,17 @@ public class LoginActivity extends AppCompatActivity {
                 .get()
                 .addOnSuccessListener(doc -> {
                     if (doc.exists()) {
-                        // User exists, go to chat
                         startActivity(new Intent(this, ChatActivity.class));
                         finish();
                     } else {
-                        // Check if pending
                         db.collection("pending_members")
                                 .document(auth.getUid())
                                 .get()
                                 .addOnSuccessListener(pendingDoc -> {
                                     if (pendingDoc.exists()) {
-                                        // Pending approval
                                         startActivity(new Intent(this, WaitingActivity.class));
                                         finish();
                                     } else {
-                                        // New user, show invite code
                                         showInviteFields();
                                     }
                                 });
@@ -138,8 +118,8 @@ public class LoginActivity extends AppCompatActivity {
 
     private void showInviteFields() {
         findViewById(R.id.googleLoginButton).setVisibility(View.GONE);
-        inviteCodeInput.setVisibility(View.VISIBLE);
-        joinButton.setVisibility(View.VISIBLE);
+        findViewById(R.id.inviteCodeLayout).setVisibility(View.VISIBLE);
+        findViewById(R.id.joinButton).setVisibility(View.VISIBLE);
         String storedCode = prefs.getString("inviteCode", "");
         if (!storedCode.isEmpty()) {
             inviteCodeInput.setText(storedCode);
@@ -160,9 +140,13 @@ public class LoginActivity extends AppCompatActivity {
                     if (doc.exists()) {
                         String familyId = doc.getString("familyId");
                         if (familyId != null) {
-                            // Add user to pending_members for admin validation
+                            FirebaseUser user = auth.getCurrentUser();
+                            String displayName = user.getDisplayName() != null
+                                    ? user.getDisplayName() : user.getEmail();
+
                             java.util.Map<String, Object> pendingMember = new java.util.HashMap<>();
-                            pendingMember.put("email", auth.getCurrentUser().getEmail());
+                            pendingMember.put("email", user.getEmail());
+                            pendingMember.put("displayName", displayName);
                             pendingMember.put("familyId", familyId);
                             pendingMember.put("inviteCode", code);
 
@@ -170,7 +154,6 @@ public class LoginActivity extends AppCompatActivity {
                                     .document(auth.getUid())
                                     .set(pendingMember)
                                     .addOnSuccessListener(aVoid -> {
-                                        // Store invite code locally
                                         prefs.edit().putString("inviteCode", code).apply();
                                         Toast.makeText(this, "Request sent to admin for approval", Toast.LENGTH_SHORT).show();
                                         startActivity(new Intent(this, WaitingActivity.class));
@@ -184,22 +167,4 @@ public class LoginActivity extends AppCompatActivity {
                     }
                 });
     }
-
-//        EditText email = findViewById(R.id.emailInput);
-//        EditText pass = findViewById(R.id.passwordInput);
-//
-//        findViewById(R.id.loginButton).setOnClickListener(v->{
-//
-//            auth.signInWithEmailAndPassword(
-//                    email.getText().toString(),
-//                    pass.getText().toString()
-//            ).addOnSuccessListener(res->{
-//
-//                startActivity(new Intent(this,ChatActivity.class));
-//                finish();
-//
-//            });
-//
-//        });
-
 }

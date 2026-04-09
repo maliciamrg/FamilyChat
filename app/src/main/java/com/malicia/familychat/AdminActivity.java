@@ -4,16 +4,17 @@ import android.app.AlertDialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.MenuItem;
-import android.view.View;
-import android.view.ViewGroup;
+import android.widget.Toast;
+
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -31,12 +32,14 @@ public class AdminActivity extends AppCompatActivity {
 
     static class MemberItem {
         String email;
+        String displayName;
         String role;
         boolean isPending;
         String uid;
 
-        MemberItem(String email, String role, boolean isPending, String uid) {
+        MemberItem(String email, String displayName, String role, boolean isPending, String uid) {
             this.email = email;
+            this.displayName = displayName;
             this.role = role;
             this.isPending = isPending;
             this.uid = uid;
@@ -44,77 +47,68 @@ public class AdminActivity extends AppCompatActivity {
     }
 
     @Override
-    protected void onCreate(Bundle savedInstanceState){
-
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_admin);
 
+        Toolbar toolbar = findViewById(R.id.adminToolbar);
+        setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             getSupportActionBar().setTitle("Admin Panel");
         }
 
-        db=FirebaseFirestore.getInstance();
-        auth=FirebaseAuth.getInstance();
+        db = FirebaseFirestore.getInstance();
+        auth = FirebaseAuth.getInstance();
 
         db.collection("members")
                 .document(auth.getUid())
                 .get()
                 .addOnSuccessListener(doc -> {
-
                     familyId = doc.getString("familyId");
-
-                    // Now that familyId is set, set up the rest
                     setupAdminFeatures();
-
                 });
-
     }
 
     private void setupAdminFeatures() {
         findViewById(R.id.createInviteButton).setOnClickListener(v -> {
-
             String code = "FAMILY-" +
-                    UUID.randomUUID().toString().substring(0, 5);
+                    UUID.randomUUID().toString().substring(0, 6).toUpperCase();
 
             Map<String, Object> invite = new HashMap<>();
-
             invite.put("familyId", familyId);
             invite.put("createdBy", auth.getCurrentUser().getEmail());
 
             db.collection("invites")
                     .document(code)
                     .set(invite)
-                    .addOnSuccessListener(aVoid -> {
-                        // Show the code and share option
-                        showInviteDialog(code);
-                    });
-
+                    .addOnSuccessListener(aVoid -> showInviteDialog(code));
         });
 
+        // Clear chat with confirmation dialog
         findViewById(R.id.deleteMessagesButton).setOnClickListener(v -> {
-
-            db.collection("family_chat")
-                    .whereEqualTo("familyId", familyId)
-                    .get()
-                    .addOnSuccessListener(snapshot -> {
-
-                        for(DocumentSnapshot doc : snapshot){
-
-                            doc.getReference().delete();
-
-                        }
-
-                    });
-
+            new AlertDialog.Builder(this)
+                    .setTitle("Clear Chat History")
+                    .setMessage("Are you sure you want to delete all messages? This cannot be undone.")
+                    .setPositiveButton("Delete All", (dialog, which) -> {
+                        db.collection("family_chat")
+                                .whereEqualTo("familyId", familyId)
+                                .get()
+                                .addOnSuccessListener(snapshot -> {
+                                    for (DocumentSnapshot doc : snapshot) {
+                                        doc.getReference().delete();
+                                    }
+                                    Toast.makeText(this, "Chat cleared", Toast.LENGTH_SHORT).show();
+                                });
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .show();
         });
-
-        findViewById(R.id.logoutButton).setOnClickListener(v -> logout());
 
         recycler = findViewById(R.id.listMembers);
         recycler.setLayoutManager(new LinearLayoutManager(this));
 
-        adapter = new AdminAdapter(memberItems, familyId, db);
+        adapter = new AdminAdapter(memberItems);
         adapter.setOnMemberClickListener(position -> showMemberContextMenu(position));
         recycler.setAdapter(adapter);
 
@@ -124,68 +118,60 @@ public class AdminActivity extends AppCompatActivity {
     private void loadMembers() {
         memberItems.clear();
 
-        // Load approved members
         db.collection("members")
                 .whereEqualTo("familyId", familyId)
                 .get()
                 .addOnSuccessListener(snapshot -> {
-                    for(DocumentSnapshot doc : snapshot){
+                    for (DocumentSnapshot doc : snapshot) {
                         String email = doc.getString("email");
+                        String displayName = doc.getString("displayName");
                         String role = doc.getString("role");
                         String uid = doc.getId();
-                        memberItems.add(new MemberItem(email, role, false, uid));
+                        memberItems.add(new MemberItem(email, displayName, role, false, uid));
                     }
 
-                    // Load pending members
                     db.collection("pending_members")
                             .whereEqualTo("familyId", familyId)
                             .get()
                             .addOnSuccessListener(pendingSnapshot -> {
-                                for(DocumentSnapshot doc : pendingSnapshot){
+                                for (DocumentSnapshot doc : pendingSnapshot) {
                                     String email = doc.getString("email");
+                                    String displayName = doc.getString("displayName");
                                     String uid = doc.getId();
-                                    memberItems.add(new MemberItem(email, "pending", true, uid));
+                                    memberItems.add(new MemberItem(email, displayName, "pending", true, uid));
                                 }
-
                                 adapter.notifyDataSetChanged();
-
-                                if (!memberItems.isEmpty()) {
-                                    recycler.scrollToPosition(memberItems.size() - 1);
-                                }
                             });
                 });
     }
 
     private void showMemberContextMenu(int position) {
         MemberItem member = memberItems.get(position);
+        String title = member.displayName != null ? member.displayName : member.email;
         String[] options;
+
         if (member.isPending) {
-            options = new String[]{"Validate", "Reject"};
+            options = new String[]{"✅ Approve", "❌ Reject"};
         } else {
-            options = new String[]{"Kick Off", "Change Role to Admin", "Change Role to Member"};
+            options = new String[]{"🚫 Remove from Family", "👑 Make Admin", "👤 Make Member"};
         }
+
         new AlertDialog.Builder(this)
-                .setTitle("Member: " + member.email)
+                .setTitle(title)
                 .setItems(options, (dialog, which) -> {
                     if (member.isPending) {
-                        switch (which) {
-                            case 0:
-                                validateMember(member);
-                                break;
-                            case 1:
-                                rejectMember(member);
-                                break;
-                        }
+                        if (which == 0) validateMember(member);
+                        else rejectMember(member);
                     } else {
                         switch (which) {
                             case 0:
-                                kickOffMember(member.email);
+                                confirmKickMember(member);
                                 break;
                             case 1:
-                                changeMemberRole(member.email, "admin");
+                                changeMemberRole(member.uid, "admin");
                                 break;
                             case 2:
-                                changeMemberRole(member.email, "member");
+                                changeMemberRole(member.uid, "member");
                                 break;
                         }
                     }
@@ -194,81 +180,83 @@ public class AdminActivity extends AppCompatActivity {
                 .show();
     }
 
-    private void kickOffMember(String email) {
-        // Find the user ID by email and delete from members collection
+    private void confirmKickMember(MemberItem member) {
+        String name = member.displayName != null ? member.displayName : member.email;
+        new AlertDialog.Builder(this)
+                .setTitle("Remove Member")
+                .setMessage("Are you sure you want to remove " + name + " from the family?")
+                .setPositiveButton("Remove", (dialog, which) -> kickOffMember(member.uid))
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void kickOffMember(String uid) {
         db.collection("members")
-                .whereEqualTo("email", email)
-                .get()
-                .addOnSuccessListener(snapshot -> {
-                    for (DocumentSnapshot doc : snapshot) {
-                        doc.getReference().delete()
-                                .addOnSuccessListener(aVoid -> {
-                                    loadMembers();
-                                });
-                    }
+                .document(uid)
+                .delete()
+                .addOnSuccessListener(aVoid -> {
+                    Toast.makeText(this, "Member removed", Toast.LENGTH_SHORT).show();
+                    loadMembers();
                 });
     }
 
-    private void changeMemberRole(String email, String newRole) {
+    private void changeMemberRole(String uid, String newRole) {
         db.collection("members")
-                .whereEqualTo("email", email)
-                .get()
-                .addOnSuccessListener(snapshot -> {
-                    for (DocumentSnapshot doc : snapshot) {
-                        doc.getReference().update("role", newRole)
-                                .addOnSuccessListener(aVoid -> {
-                                    loadMembers();
-                                });
-                    }
+                .document(uid)
+                .update("role", newRole)
+                .addOnSuccessListener(aVoid -> {
+                    Toast.makeText(this, "Role updated", Toast.LENGTH_SHORT).show();
+                    loadMembers();
                 });
-    }
-
-    private void logout() {
-        auth.signOut();
-        startActivity(new Intent(this, LoginActivity.class));
-        finish();
     }
 
     private void showInviteDialog(String code) {
         new AlertDialog.Builder(this)
                 .setTitle("Invite Code Created")
-                .setMessage("Invite Code: " + code)
+                .setMessage("Share this code with your family member:\n\n" + code)
                 .setPositiveButton("Share", (dialog, which) -> {
                     Intent shareIntent = new Intent(Intent.ACTION_SEND);
                     shareIntent.setType("text/plain");
-                    shareIntent.putExtra(Intent.EXTRA_TEXT, "Join my family chat with this code: " + code);
+                    shareIntent.putExtra(Intent.EXTRA_TEXT,
+                            "Join our FamilyChat with this code: " + code);
                     startActivity(Intent.createChooser(shareIntent, "Share Invite Code"));
                 })
-                .setNegativeButton("OK", null)
+                .setNeutralButton("Copy", (dialog, which) -> {
+                    android.content.ClipboardManager clipboard =
+                            (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+                    clipboard.setPrimaryClip(
+                            android.content.ClipData.newPlainText("Invite Code", code));
+                    Toast.makeText(this, "Code copied!", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Done", null)
                 .show();
     }
 
     private void validateMember(MemberItem member) {
-        // Move from pending_members to members
         db.collection("pending_members")
                 .document(member.uid)
                 .get()
                 .addOnSuccessListener(doc -> {
                     if (doc.exists()) {
                         String email = doc.getString("email");
-                        String familyId = doc.getString("familyId");
-                        String inviteCode = doc.getString("inviteCode");
+                        String displayName = doc.getString("displayName");
+                        String pendingFamilyId = doc.getString("familyId");
 
-                        // Add to members
                         Map<String, Object> memberData = new HashMap<>();
                         memberData.put("email", email);
-                        memberData.put("familyId", familyId);
+                        memberData.put("displayName", displayName);
+                        memberData.put("familyId", pendingFamilyId);
                         memberData.put("role", "member");
 
                         db.collection("members")
                                 .document(member.uid)
                                 .set(memberData)
                                 .addOnSuccessListener(aVoid -> {
-                                    // Delete from pending
                                     db.collection("pending_members")
                                             .document(member.uid)
                                             .delete()
                                             .addOnSuccessListener(aVoid2 -> {
+                                                Toast.makeText(this, "Member approved!", Toast.LENGTH_SHORT).show();
                                                 loadMembers();
                                             });
                                 });
@@ -277,13 +265,21 @@ public class AdminActivity extends AppCompatActivity {
     }
 
     private void rejectMember(MemberItem member) {
-        // Delete from pending_members
-        db.collection("pending_members")
-                .document(member.uid)
-                .delete()
-                .addOnSuccessListener(aVoid -> {
-                    loadMembers();
-                });
+        String name = member.displayName != null ? member.displayName : member.email;
+        new AlertDialog.Builder(this)
+                .setTitle("Reject Request")
+                .setMessage("Reject " + name + "'s request to join?")
+                .setPositiveButton("Reject", (dialog, which) -> {
+                    db.collection("pending_members")
+                            .document(member.uid)
+                            .delete()
+                            .addOnSuccessListener(aVoid -> {
+                                Toast.makeText(this, "Request rejected", Toast.LENGTH_SHORT).show();
+                                loadMembers();
+                            });
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     @Override

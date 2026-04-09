@@ -1,41 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              xmlns:app="http://schemas.android.com/apk/res-auto" android:orientation="vertical"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
     android:background="#ECE5DD"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
+
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/colorPrimary"
+        android:elevation="4dp"
+        app:titleTextColor="#FFFFFF"
+        app:popupTheme="@style/ThemeOverlay.AppCompat.Light" />
+
+    <TextView
+        android:id="@+id/emptyStateText"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:text="No messages yet — say hi! 👋"
+        android:textSize="16sp"
+        android:textColor="#999"
+        android:visibility="gone" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/chatRecycler"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"/>
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:padding="4dp" />
 
     <LinearLayout
         android:orientation="horizontal"
         android:background="#FFFFFF"
         android:padding="8dp"
+        android:gravity="center_vertical"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
         <EditText
             android:id="@+id/messageInput"
             android:layout_weight="1"
-            android:hint="Message"
+            android:hint="Type a message…"
+            android:background="@drawable/input_background"
+            android:padding="12dp"
+            android:maxLines="4"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"/>
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp" />
 
-        <Button
-                android:id="@+id/sendButton"
-                android:text="Send"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
-
+        <ImageButton
+            android:id="@+id/sendButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@android:drawable/ic_menu_send"
+            android:background="@drawable/circle_background"
+            android:contentDescription="Send"
+            android:padding="12dp"
+            app:tint="#FFFFFF" />
 
     </LinearLayout>
-    <Button
-            android:text="admin"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:id="@+id/adminButton"
-            android:visibility="gone"/>
+
 </LinearLayout>

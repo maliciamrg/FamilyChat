@@ -1,29 +1,72 @@
 <LinearLayout
         xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
         android:orientation="vertical"
-        android:padding="16dp"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:background="#FAFAFA">
+
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/adminToolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/colorPrimary"
+        android:elevation="4dp"
+        app:titleTextColor="#FFFFFF"
+        app:navigationIconTint="#FFFFFF" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Family Members"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:textColor="#666"
+        android:textAllCaps="true"
+        android:letterSpacing="0.1"
+        android:paddingStart="16dp"
+        android:paddingTop="16dp"
+        android:paddingBottom="8dp" />
 
     <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/listMembers"
             android:layout_width="match_parent"
-            android:layout_height="247dp"/>
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp" />
 
-    <Button
-            android:id="@+id/createInviteButton"
-            android:text="Create Invite Code"
-            android:layout_height="wrap_content"
-            android:layout_width="wrap_content"/>
-    <Button
-            android:id="@+id/deleteMessagesButton"
-            android:text="Clear Chat"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
-    <Button
-            android:id="@+id/logoutButton"
-            android:text="Logout"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:background="#FFFFFF"
+        android:elevation="8dp">
+
+        <com.google.android.material.button.MaterialButton
+                android:id="@+id/createInviteButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Create Invite Code"
+                android:textAllCaps="false"
+                app:icon="@android:drawable/ic_menu_share"
+                app:backgroundTint="@color/colorPrimary"
+                android:layout_marginBottom="8dp" />
+
+        <com.google.android.material.button.MaterialButton
+                android:id="@+id/deleteMessagesButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Clear Chat History"
+                android:textAllCaps="false"
+                android:textColor="#D32F2F"
+                app:icon="@android:drawable/ic_menu_delete"
+                app:iconTint="#D32F2F"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                app:strokeColor="#D32F2F" />
+
+    </LinearLayout>
 
 </LinearLayout>
